@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	kitprometheus "github.com/go-kit/kit/metrics/prometheus"
-	influxdata "github.com/influxdata/influxdb/client/v2"
+	influxdata "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/mainflux/mainflux"
 	"github.com/mainflux/mainflux/consumers"
 	"github.com/mainflux/mainflux/consumers/writers/api"
@@ -29,47 +29,56 @@ import (
 const (
 	svcName = "influxdb-writer"
 
-	defNatsURL     = "nats://localhost:4222"
-	defLogLevel    = "error"
-	defPort        = "8180"
-	defDB          = "mainflux"
-	defDBHost      = "localhost"
-	defDBPort      = "8086"
-	defDBUser      = "mainflux"
-	defDBPass      = "mainflux"
-	defConfigPath  = "/config.toml"
-	defContentType = "application/senml+json"
-	defTransformer = "senml"
+	defNatsURL          = "nats://localhost:4222"
+	defLogLevel         = "error"
+	defPort             = "8180"
+	defDB               = "mainflux"
+	defDBHost           = "localhost"
+	defDBPort           = "8086"
+	defConfigPath       = "/config.toml"
+	defContentType      = "application/senml+json"
+	defTransformer      = "senml"
+	defDBToken          = "mainflux"
+	defOrg              = "mainflux"
+	defBucket           = "mainflux"
+	defMainfluxApiToken = "mainflux"
+	defMainfluxUrl      = "http://localhost"
 
-	envNatsURL     = "MF_NATS_URL"
-	envLogLevel    = "MF_INFLUX_WRITER_LOG_LEVEL"
-	envPort        = "MF_INFLUX_WRITER_PORT"
-	envDB          = "MF_INFLUXDB_DB"
-	envDBHost      = "MF_INFLUX_WRITER_DB_HOST"
-	envDBPort      = "MF_INFLUXDB_PORT"
-	envDBUser      = "MF_INFLUXDB_ADMIN_USER"
-	envDBPass      = "MF_INFLUXDB_ADMIN_PASSWORD"
-	envConfigPath  = "MF_INFLUX_WRITER_CONFIG_PATH"
-	envContentType = "MF_INFLUX_WRITER_CONTENT_TYPE"
-	envTransformer = "MF_INFLUX_WRITER_TRANSFORMER"
+	envNatsURL          = "MF_NATS_URL"
+	envLogLevel         = "MF_INFLUX_WRITER_LOG_LEVEL"
+	envPort             = "MF_INFLUX_WRITER_PORT"
+	envDB               = "MF_INFLUXDB_DB"
+	envDBHost           = "MF_INFLUX_WRITER_DB_HOST"
+	envDBPort           = "MF_INFLUXDB_PORT"
+	envConfigPath       = "MF_INFLUX_WRITER_CONFIG_PATH"
+	envContentType      = "MF_INFLUX_WRITER_CONTENT_TYPE"
+	envTransformer      = "MF_INFLUX_WRITER_TRANSFORMER"
+	envDBToken          = "MF_INFLUXDB_ADMIN_TOKEN"
+	envOrg              = "MF_INFLUXDB_ORG"
+	envBucket           = "MF_INFLUXDB_BUCKET"
+	envMainfluxApiToken = "MF_API_KEY"
+	envMainfluxUrl      = "MF_URL"
 )
 
 type config struct {
-	natsURL     string
-	logLevel    string
-	port        string
-	dbName      string
-	dbHost      string
-	dbPort      string
-	dbUser      string
-	dbPass      string
-	configPath  string
-	contentType string
-	transformer string
+	natsURL          string
+	logLevel         string
+	port             string
+	dbName           string
+	dbHost           string
+	dbPort           string
+	dbToken          string
+	configPath       string
+	contentType      string
+	transformer      string
+	org              string
+	bucket           string
+	mainfluxApiToken string
+	mainfluxUrl      string
 }
 
 func main() {
-	cfg, clientCfg := loadConfigs()
+	cfg, dbAddr, dbToken := loadConfigs()
 
 	logger, err := logger.New(os.Stdout, cfg.logLevel)
 	if err != nil {
@@ -83,14 +92,14 @@ func main() {
 	}
 	defer pubSub.Close()
 
-	client, err := influxdata.NewHTTPClient(clientCfg)
+	client := influxdata.NewClient(dbAddr, dbToken)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to create InfluxDB client: %s", err))
 		os.Exit(1)
 	}
 	defer client.Close()
 
-	repo := influxdb.New(client, cfg.dbName)
+	repo := influxdb.New(client, cfg.org, cfg.bucket, cfg.mainfluxApiToken, cfg.mainfluxUrl)
 
 	counter, latency := makeMetrics()
 	repo = api.LoggingMiddleware(repo, logger)
@@ -115,28 +124,24 @@ func main() {
 	logger.Error(fmt.Sprintf("InfluxDB writer service terminated: %s", err))
 }
 
-func loadConfigs() (config, influxdata.HTTPConfig) {
+func loadConfigs() (config, string, string) {
 	cfg := config{
-		natsURL:     mainflux.Env(envNatsURL, defNatsURL),
-		logLevel:    mainflux.Env(envLogLevel, defLogLevel),
-		port:        mainflux.Env(envPort, defPort),
-		dbName:      mainflux.Env(envDB, defDB),
-		dbHost:      mainflux.Env(envDBHost, defDBHost),
-		dbPort:      mainflux.Env(envDBPort, defDBPort),
-		dbUser:      mainflux.Env(envDBUser, defDBUser),
-		dbPass:      mainflux.Env(envDBPass, defDBPass),
-		configPath:  mainflux.Env(envConfigPath, defConfigPath),
-		contentType: mainflux.Env(envContentType, defContentType),
-		transformer: mainflux.Env(envTransformer, defTransformer),
+		natsURL:          mainflux.Env(envNatsURL, defNatsURL),
+		logLevel:         mainflux.Env(envLogLevel, defLogLevel),
+		port:             mainflux.Env(envPort, defPort),
+		dbName:           mainflux.Env(envDB, defDB),
+		dbHost:           mainflux.Env(envDBHost, defDBHost),
+		dbPort:           mainflux.Env(envDBPort, defDBPort),
+		dbToken:          mainflux.Env(envDBToken, defDBToken),
+		configPath:       mainflux.Env(envConfigPath, defConfigPath),
+		contentType:      mainflux.Env(envContentType, defContentType),
+		transformer:      mainflux.Env(envTransformer, defTransformer),
+		org:              mainflux.Env(envOrg, defOrg),
+		bucket:           mainflux.Env(envBucket, defBucket),
+		mainfluxApiToken: mainflux.Env(envMainfluxApiToken, defMainfluxApiToken),
+		mainfluxUrl:      mainflux.Env(envMainfluxUrl, defMainfluxUrl),
 	}
-
-	clientCfg := influxdata.HTTPConfig{
-		Addr:     fmt.Sprintf("http://%s:%s", cfg.dbHost, cfg.dbPort),
-		Username: cfg.dbUser,
-		Password: cfg.dbPass,
-	}
-
-	return cfg, clientCfg
+	return cfg, fmt.Sprintf("http://%s:%s", cfg.dbHost, cfg.dbPort), cfg.dbToken
 }
 
 func makeMetrics() (*kitprometheus.Counter, *kitprometheus.Summary) {
