@@ -1,10 +1,9 @@
 node {
     def app
-    environment { 
-        HTTP_PROXY = "http://127.0.0.1:7890"
-        HTTPS_PROXY = "http://127.0.0.1:7890"
-        ALL_PROXY = "socks5://127.0.0.1:7890"
-    }
+    // environment { 
+    //     HTTP_PROXY = "http://127.0.0.1:7890"
+    //     HTTPS_PROXY = "http://127.0.0.1:7890"
+    // }
 
     stage('Clone repository') {
         /* Let's make sure we have the repository cloned to our workspace */
@@ -16,7 +15,7 @@ node {
         /* This builds the actual image; synonymous to
          * docker build on the command line */
 
-        app = docker.build("matrinos/influxdb-writer", "--no-cache --build-arg SVC=influxdb-writer --build-arg GOARCH=amd64 --build-arg GOARM= -f docker/Dockerfile .")
+        app = docker.build("matrinos/influxdb-writer", "--no-cache --build-arg SVC=influxdb-writer --build-arg GOARCH=amd64 --build-arg GOARM= --network host -f docker/Dockerfile .")
     }
 
     stage('Test image') {
