@@ -92,7 +92,7 @@ func main() {
 	}
 	defer pubSub.Close()
 
-	client := influxdata.NewClient(dbAddr, dbToken)
+	client := influxdata.NewClientWithOptions(dbAddr, dbToken, influxdata.DefaultOptions().SetBatchSize(5000))
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to create InfluxDB client: %s", err))
 		os.Exit(1)
