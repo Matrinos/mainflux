@@ -37,10 +37,10 @@ const (
 	defConfigPath       = "/config.toml"
 	defContentType      = "application/senml+json"
 	defTransformer      = "senml"
-	defDBToken          = "lwnrVKFhrpIkRbGdJNxX4MLWtGa0s5LWF1I8w7ct8X62XKz7likHtkLlz0wThvNW5PmfhDi4tzWyh6oV3X1DoA=="
+	defDBToken          = ""
 	defOrg              = "mainflux"
 	defBucket           = "mainflux"
-	defMainfluxApiToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI0MGY5N2UyMi1iYmJjLTRkNDQtYTA2ZC1hYzY5NDUxZDY3ODciLCJpYXQiOjE2Mjk4ODUzNDIsImlzcyI6Im1haW5mbHV4LmF1dGgiLCJzdWIiOiJhbXkuamlhbmdAZW1haWwuY29tIiwiaXNzdWVyX2lkIjoiY2JiNWIxZDgtZmE2Zi00MGM1LTlkN2QtOTdmNzNlMDBkNzBmIiwidHlwZSI6Mn0.sBWISerstcHB3iBD-Mi3s-f68NX4lfS5BUycX1bgNh0"
+	defMainfluxApiToken = ""
 	defMainfluxUrl      = "http://190.190.190.81"
 
 	envNatsURL          = "MF_NATS_URL"

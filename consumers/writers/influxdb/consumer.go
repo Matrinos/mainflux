@@ -4,7 +4,6 @@
 package influxdb
 
 import (
-	"fmt"
 	"math"
 	"time"
 
@@ -75,10 +74,6 @@ func (repo *influxRepo) senmlPoints(messages interface{}) error {
 		tgs := senmlTags(msg, deviceName, meta)
 
 		flds := senmlFields(msg)
-
-		if msg.Publisher == "6c369976-03ff-448d-b518-578ced374b80" {
-			println(fmt.Sprintf("%v", flds))
-		}
 
 		sec, dec := math.Modf(msg.Time)
 		t := time.Unix(int64(sec), int64(dec*(1e9)))
