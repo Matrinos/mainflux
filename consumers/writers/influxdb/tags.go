@@ -22,14 +22,13 @@ func senmlTags(msg senml.Message, deviceName string, meta things.Metadata) tags 
 		"publisher": msg.Publisher,
 		// Customized tags
 		"device": deviceName,
-		"system": msg.Channel,
 		// Thing meta
+		"system":         interface2String(meta["system-name"]),
 		"building-group": interface2String(meta["building-group"]),
 		"building":       interface2String(meta["building"]),
 		"level":          interface2String(meta["level"]),
 		"room":           interface2String(meta["room"]),
 		"space":          interface2String(meta["space"]),
-		"name":           interface2String(meta["name"]),
 	}
 }
 

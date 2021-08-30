@@ -29,27 +29,25 @@ import (
 const (
 	svcName = "influxdb-writer"
 
-	defNatsURL          = "nats://localhost:4222"
+	defNatsURL          = "nats://190.190.190.81:4222"
 	defLogLevel         = "error"
 	defPort             = "8180"
 	defDB               = "mainflux"
-	defDBHost           = "localhost"
-	defDBPort           = "8086"
+	defDBUrl            = "http://localhost:8086"
 	defConfigPath       = "/config.toml"
 	defContentType      = "application/senml+json"
 	defTransformer      = "senml"
-	defDBToken          = "mainflux"
+	defDBToken          = "lwnrVKFhrpIkRbGdJNxX4MLWtGa0s5LWF1I8w7ct8X62XKz7likHtkLlz0wThvNW5PmfhDi4tzWyh6oV3X1DoA=="
 	defOrg              = "mainflux"
 	defBucket           = "mainflux"
-	defMainfluxApiToken = "mainflux"
-	defMainfluxUrl      = "http://localhost"
+	defMainfluxApiToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI0MGY5N2UyMi1iYmJjLTRkNDQtYTA2ZC1hYzY5NDUxZDY3ODciLCJpYXQiOjE2Mjk4ODUzNDIsImlzcyI6Im1haW5mbHV4LmF1dGgiLCJzdWIiOiJhbXkuamlhbmdAZW1haWwuY29tIiwiaXNzdWVyX2lkIjoiY2JiNWIxZDgtZmE2Zi00MGM1LTlkN2QtOTdmNzNlMDBkNzBmIiwidHlwZSI6Mn0.sBWISerstcHB3iBD-Mi3s-f68NX4lfS5BUycX1bgNh0"
+	defMainfluxUrl      = "http://190.190.190.81"
 
 	envNatsURL          = "MF_NATS_URL"
 	envLogLevel         = "MF_INFLUX_WRITER_LOG_LEVEL"
 	envPort             = "MF_INFLUX_WRITER_PORT"
 	envDB               = "MF_INFLUXDB_DB"
-	envDBHost           = "MF_INFLUX_WRITER_DB_HOST"
-	envDBPort           = "MF_INFLUXDB_PORT"
+	envDBUrl            = "MF_INFLUX_WRITER_DB_URL"
 	envConfigPath       = "MF_INFLUX_WRITER_CONFIG_PATH"
 	envContentType      = "MF_INFLUX_WRITER_CONTENT_TYPE"
 	envTransformer      = "MF_INFLUX_WRITER_TRANSFORMER"
@@ -65,8 +63,7 @@ type config struct {
 	logLevel         string
 	port             string
 	dbName           string
-	dbHost           string
-	dbPort           string
+	dbUrl            string
 	dbToken          string
 	configPath       string
 	contentType      string
@@ -130,8 +127,7 @@ func loadConfigs() (config, string, string) {
 		logLevel:         mainflux.Env(envLogLevel, defLogLevel),
 		port:             mainflux.Env(envPort, defPort),
 		dbName:           mainflux.Env(envDB, defDB),
-		dbHost:           mainflux.Env(envDBHost, defDBHost),
-		dbPort:           mainflux.Env(envDBPort, defDBPort),
+		dbUrl:            mainflux.Env(envDBUrl, defDBUrl),
 		dbToken:          mainflux.Env(envDBToken, defDBToken),
 		configPath:       mainflux.Env(envConfigPath, defConfigPath),
 		contentType:      mainflux.Env(envContentType, defContentType),
@@ -141,7 +137,7 @@ func loadConfigs() (config, string, string) {
 		mainfluxApiToken: mainflux.Env(envMainfluxApiToken, defMainfluxApiToken),
 		mainfluxUrl:      mainflux.Env(envMainfluxUrl, defMainfluxUrl),
 	}
-	return cfg, fmt.Sprintf("http://%s:%s", cfg.dbHost, cfg.dbPort), cfg.dbToken
+	return cfg, cfg.dbUrl, cfg.dbToken
 }
 
 func makeMetrics() (*kitprometheus.Counter, *kitprometheus.Summary) {
