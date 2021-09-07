@@ -62,13 +62,18 @@ func (repo *influxRepo) senmlPoints(messages interface{}) error {
 	}
 
 	for _, msg := range msgs {
-		deviceName, measurement, err := senmlBasename(msg)
+		deviceName, measurement, thingId, err := SenmlBasename(msg.Name)
 
 		if err != nil {
 			deviceName = msg.Name
 			measurement = msg.Name
 		}
-		meta, err := repo.thingsService.GetThingMetaById(msg.Publisher)
+
+		if thingId == "" {
+			thingId = msg.Publisher
+		}
+
+		meta, err := repo.thingsService.GetThingMetaById(thingId)
 
 		tgs := senmlTags(msg, deviceName, meta)
 
