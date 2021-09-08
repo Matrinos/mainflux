@@ -138,7 +138,6 @@ func TestSaveSenml(t *testing.T) {
 	}
 }
 
-// TODO: Bring back json support
 func TestSaveJSON(t *testing.T) {
 	repo := writer.New(client, testOrg, testBucket, testMainfluxToken, testMainfluxUrl)
 
@@ -154,14 +153,14 @@ func TestSaveJSON(t *testing.T) {
 		Subtopic:  "subtopic/format/some_json",
 		Protocol:  "mqtt",
 		Payload: map[string]interface{}{
-			// "field_1": 123,
-			// "field_2": "value",
-			// "field_3": false,
-			"field_4": 12.344,
-			// "field_5": map[string]interface{}{
-			// 	// "field_1": "value",
-			// 	"field_2": 42,
-			// },
+			"field_1": 123,
+			"field_2": "value",
+			"field_3": false,
+			"value":   12.344,
+			"field_5": map[string]interface{}{
+				// "field_1": "value",
+				"field_2": 42,
+			},
 			"deviceName":  "device-123",
 			"measurement": "lighting",
 		},
@@ -196,18 +195,18 @@ func TestSaveJSON(t *testing.T) {
 	msgs := json.Messages{
 		Format: "some_json",
 	}
-	// invalidKeySepMsgs := json.Messages{
-	// 	Format: "some_json",
-	// }
-	// invalidKeyNameMsgs := json.Messages{
-	// 	Format: "some_json",
-	// }
+	invalidKeySepMsgs := json.Messages{
+		Format: "some_json",
+	}
+	invalidKeyNameMsgs := json.Messages{
+		Format: "some_json",
+	}
 
 	for i := 0; i < streamsSize; i++ {
 		msg.Created = now + int64(i)
 		msgs.Data = append(msgs.Data, msg)
-		// invalidKeySepMsgs.Data = append(invalidKeySepMsgs.Data, invalidKeySepMsg)
-		// invalidKeyNameMsgs.Data = append(invalidKeyNameMsgs.Data, invalidKeyNameMsg)
+		invalidKeySepMsgs.Data = append(invalidKeySepMsgs.Data, invalidKeySepMsg)
+		invalidKeyNameMsgs.Data = append(invalidKeyNameMsgs.Data, invalidKeyNameMsg)
 	}
 
 	cases := []struct {
@@ -220,16 +219,16 @@ func TestSaveJSON(t *testing.T) {
 			msgs: msgs,
 			err:  nil,
 		},
-		// {
-		// 	desc: "consume invalid json messages containing invalid key separator",
-		// 	msgs: invalidKeySepMsgs,
-		// 	err:  json.ErrInvalidKey,
-		// },
-		// {
-		// 	desc: "consume invalid json messages containing invalid key name",
-		// 	msgs: invalidKeySepMsgs,
-		// 	err:  json.ErrInvalidKey,
-		// },
+		{
+			desc: "consume invalid json messages containing invalid key separator",
+			msgs: invalidKeySepMsgs,
+			err:  json.ErrInvalidKey,
+		},
+		{
+			desc: "consume invalid json messages containing invalid key name",
+			msgs: invalidKeySepMsgs,
+			err:  json.ErrInvalidKey,
+		},
 	}
 	for _, tc := range cases {
 		err = repo.Consume(tc.msgs)

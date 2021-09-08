@@ -6,15 +6,19 @@ package influxdb
 import (
 	"fmt"
 	"math"
+	"os"
 	"time"
 
 	influxdata "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/mainflux/mainflux/consumers"
+	log "github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
 )
+
+var logger, _ = log.New(os.Stdout, log.Info.String())
 
 var errSaveMessage = errors.New("failed to save message to influxdb database")
 
@@ -35,11 +39,21 @@ func New(client influxdata.Client, org, bucket, mainfluxApiToken, mainfluxUrl st
 		Token: mainfluxApiToken,
 		Url:   mainfluxUrl,
 	}
+
+	writeAPI := client.WriteAPI(org, bucket)
+	errorsCh := writeAPI.Errors()
+
+	go func() {
+		for err := range errorsCh {
+			logger.Error(fmt.Sprintf("Failed to write the data to influxdb :: %s", err))
+		}
+	}()
+
 	return &influxRepo{
 		client:           client,
 		bucket:           bucket,
 		org:              org,
-		writeAPI:         client.WriteAPI(org, bucket),
+		writeAPI:         writeAPI,
 		mainfluxApiToken: mainfluxApiToken,
 		thingsService:    NewThingsService(thingsServiceConfig),
 	}
@@ -49,9 +63,15 @@ func (repo *influxRepo) Consume(message interface{}) error {
 	switch m := message.(type) {
 	// TODO: Bring back json support
 	case json.Messages:
-		repo.jsonPoints(m)
+		err := repo.jsonPoints(m)
+		if err != nil {
+			return err
+		}
 	default:
-		repo.senmlPoints(m)
+		err := repo.senmlPoints(m)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -89,8 +109,7 @@ func (repo *influxRepo) senmlPoints(messages interface{}) error {
 
 // TODO: Bring back json support
 func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
-	for i, m := range msgs.Data {
-
+	for _, m := range msgs.Data {
 		flat, err := json.Flatten(m.Payload)
 		if err != nil {
 			return errors.Wrap(json.ErrTransform, err)
@@ -111,7 +130,7 @@ func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
 			} else if k == "measurement" {
 				measurement = v.(string)
 			} else {
-				fields["value"] = v
+				fields[k] = v
 			}
 
 		}
@@ -122,11 +141,7 @@ func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
 			continue
 		}
 
-		t := time.Unix(0, m.Created+int64(i))
-		// sec, dec := math.Modf(float64(m.Created + int64(i)))
-		// t := time.Unix(m.Created, 0)
-
-		fmt.Print(t.UnixNano())
+		t := time.Unix(0, m.Created)
 
 		tgs := jsonTags(m, deviceName, meta)
 		pt := influxdata.NewPoint(measurement, tgs, fields, t)
@@ -134,5 +149,6 @@ func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
 	}
 
 	repo.writeAPI.Flush()
+
 	return nil
 }
