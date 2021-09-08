@@ -16,6 +16,7 @@ import (
 	"github.com/mainflux/mainflux/pkg/errors"
 	"github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
+	"github.com/mainflux/mainflux/things"
 )
 
 var logger, _ = log.New(os.Stdout, log.Info.String())
@@ -117,7 +118,14 @@ func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
 
 		// if there eorr of getting meta, ignore it
 		// still save it to influx db
-		meta, _ := repo.thingsService.GetThingMetaById(m.Publisher)
+		meta := things.Metadata{}
+
+		thingID := m.Payload["thingId"]
+		if thingID != nil {
+			meta, _ = repo.thingsService.GetThingMetaById(thingID.(string))
+		} else {
+			meta, _ = repo.thingsService.GetThingMetaById(m.Publisher)
+		}
 
 		m.Payload = flat
 		measurement := ""
@@ -143,6 +151,8 @@ func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
 
 		t := time.Unix(0, m.Created)
 
+		// TODO: do we need add thing id to the tag if the publisher is not
+		// the thing id of the device?
 		tgs := jsonTags(m, deviceName, meta)
 		pt := influxdata.NewPoint(measurement, tgs, fields, t)
 		repo.writeAPI.WritePoint(pt)
