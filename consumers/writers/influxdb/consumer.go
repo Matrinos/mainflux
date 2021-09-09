@@ -120,23 +120,11 @@ func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
 			return errors.Wrap(json.ErrTransform, err)
 		}
 
-		// if there eorr of getting meta, ignore it
-		// still save it to influx db
-		meta := things.Metadata{}
-
-		thingID := m.Payload["thingId"]
-		if thingID != nil {
-			meta, _ = repo.thingsService.GetThingMetaById(thingID.(string))
-		} else {
-			meta, _ = repo.thingsService.GetThingMetaById(m.Publisher)
-		}
-
-		m.Payload = flat
 		measurement := ""
 		deviceName := ""
 		// Copy first-level fields so that the original Payload is unchanged.
 		fields := make(map[string]interface{})
-		for k, v := range m.Payload {
+		for k, v := range flat {
 			if k == "deviceName" {
 				deviceName = v.(string)
 			} else if k == "measurement" {
@@ -158,6 +146,17 @@ func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
 
 		// TODO: do we need add thing id to the tag if the publisher is not
 		// the thing id of the device?
+		// if there eorr of getting meta, ignore it
+		// still save it to influx db
+		var meta things.Metadata
+
+		thingID := flat["thingId"]
+		if thingID != nil {
+			meta, _ = repo.thingsService.GetThingMetaById(thingID.(string))
+		} else {
+			meta, _ = repo.thingsService.GetThingMetaById(m.Publisher)
+		}
+
 		tgs := jsonTags(m, deviceName, meta)
 		pt := influxdata.NewPoint(measurement, tgs, fields, t)
 		repo.writeAPI.WritePoint(pt)
