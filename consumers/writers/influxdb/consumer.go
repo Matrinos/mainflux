@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	influxdata "github.com/influxdata/influxdb-client-go/v2"
@@ -32,10 +33,11 @@ type influxRepo struct {
 	writeAPI         api.WriteAPI
 	mainfluxApiToken string
 	thingsService    *ThingsService
+	logger           log.Logger
 }
 
 // New returns new InfluxDB writer.
-func New(client influxdata.Client, org, bucket, mainfluxApiToken, mainfluxUrl string) consumers.Consumer {
+func New(client influxdata.Client, org, bucket, mainfluxApiToken, mainfluxUrl string, logger log.Logger) consumers.Consumer {
 	thingsServiceConfig := &ThingsServiceConfig{
 		Token: mainfluxApiToken,
 		Url:   mainfluxUrl,
@@ -57,22 +59,24 @@ func New(client influxdata.Client, org, bucket, mainfluxApiToken, mainfluxUrl st
 		writeAPI:         writeAPI,
 		mainfluxApiToken: mainfluxApiToken,
 		thingsService:    NewThingsService(thingsServiceConfig),
+		logger:           logger,
 	}
 }
 
 func (repo *influxRepo) Consume(message interface{}) error {
+
 	switch m := message.(type) {
 	// TODO: Bring back json support
 	case json.Messages:
-		err := repo.jsonPoints(m)
-		if err != nil {
-			return err
+		if strings.ToUpper(m.Format) == "JSON" {
+			return repo.jsonPoints(m)
+		} else {
+			// TODO: shall we actually return an error here.
+			// maybe this kinds payload is for other consumers?
+			repo.logger.Info(fmt.Sprintf("Ignore the message with format %s", m.Format))
 		}
 	default:
-		err := repo.senmlPoints(m)
-		if err != nil {
-			return err
-		}
+		return repo.senmlPoints(m)
 	}
 
 	return nil
@@ -146,6 +150,7 @@ func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
 		if measurement == "" {
 			// if no measurement, ignore the message.
 			// TODO add a log message here.
+			repo.logger.Info("Ignore the data without measurement key")
 			continue
 		}
 

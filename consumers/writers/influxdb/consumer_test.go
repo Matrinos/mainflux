@@ -71,7 +71,8 @@ func cleanDB() error {
 }
 
 func TestSaveSenml(t *testing.T) {
-	repo := writer.New(client, testOrg, testBucket, testMainfluxToken, testMainfluxUrl)
+	logger, _ := log.New(os.Stdout, log.Info.String())
+	repo := writer.New(client, testOrg, testBucket, testMainfluxToken, testMainfluxUrl, logger)
 
 	cases := []struct {
 		desc         string
@@ -139,7 +140,8 @@ func TestSaveSenml(t *testing.T) {
 }
 
 func TestSaveJSON(t *testing.T) {
-	repo := writer.New(client, testOrg, testBucket, testMainfluxToken, testMainfluxUrl)
+	logger, _ := log.New(os.Stdout, log.Info.String())
+	repo := writer.New(client, testOrg, testBucket, testMainfluxToken, testMainfluxUrl, logger)
 
 	chid, err := uuid.NewV4()
 	require.Nil(t, err, fmt.Sprintf("got unexpected error: %s", err))
