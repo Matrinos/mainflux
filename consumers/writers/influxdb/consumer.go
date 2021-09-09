@@ -99,7 +99,7 @@ func (repo *influxRepo) senmlPoints(messages interface{}) error {
 		if thingId == "" {
 			thingId = msg.Publisher
 		}
-    // if there is err of getting meta, ignore it
+		// if there is err of getting meta, ignore it
 		// still save it to influx db
 		meta, _ := repo.thingsService.GetThingMetaById(thingId)
 
