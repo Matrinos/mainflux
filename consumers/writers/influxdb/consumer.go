@@ -89,19 +89,21 @@ func (repo *influxRepo) senmlPoints(messages interface{}) error {
 	}
 
 	for _, msg := range msgs {
-		deviceName, measurement, thingId, err := SenmlBasename(msg.Name)
+		deviceName, measurement, err := SenmlBasename(msg.Name)
 
 		if err != nil {
 			deviceName = msg.Name
 			measurement = msg.Name
 		}
 
-		if thingId == "" {
-			thingId = msg.Publisher
-		}
 		// if there is err of getting meta, ignore it
 		// still save it to influx db
-		meta, _ := repo.thingsService.GetThingMetaById(thingId)
+		thingID := msg.Link
+
+		if thingID == "" {
+			thingID = msg.Publisher
+		}
+		meta, _ := repo.thingsService.GetThingMetaById(thingID)
 
 		tgs := senmlTags(msg, deviceName, meta)
 
