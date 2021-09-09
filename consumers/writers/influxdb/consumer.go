@@ -4,15 +4,23 @@
 package influxdb
 
 import (
+	"fmt"
 	"math"
+	"os"
+	"strings"
 	"time"
 
 	influxdata "github.com/influxdata/influxdb-client-go/v2"
 	"github.com/influxdata/influxdb-client-go/v2/api"
 	"github.com/mainflux/mainflux/consumers"
+	log "github.com/mainflux/mainflux/logger"
 	"github.com/mainflux/mainflux/pkg/errors"
+	"github.com/mainflux/mainflux/pkg/transformers/json"
 	"github.com/mainflux/mainflux/pkg/transformers/senml"
+	"github.com/mainflux/mainflux/things"
 )
+
+var logger, _ = log.New(os.Stdout, log.Info.String())
 
 var errSaveMessage = errors.New("failed to save message to influxdb database")
 
@@ -25,31 +33,50 @@ type influxRepo struct {
 	writeAPI         api.WriteAPI
 	mainfluxApiToken string
 	thingsService    *ThingsService
+	logger           log.Logger
 }
 
 // New returns new InfluxDB writer.
-func New(client influxdata.Client, org, bucket, mainfluxApiToken, mainfluxUrl string) consumers.Consumer {
+func New(client influxdata.Client, org, bucket, mainfluxApiToken, mainfluxUrl string, logger log.Logger) consumers.Consumer {
 	thingsServiceConfig := &ThingsServiceConfig{
 		Token: mainfluxApiToken,
 		Url:   mainfluxUrl,
 	}
+
+	writeAPI := client.WriteAPI(org, bucket)
+	errorsCh := writeAPI.Errors()
+
+	go func() {
+		for err := range errorsCh {
+			logger.Error(fmt.Sprintf("Failed to write the data to influxdb :: %s", err))
+		}
+	}()
+
 	return &influxRepo{
 		client:           client,
 		bucket:           bucket,
 		org:              org,
-		writeAPI:         client.WriteAPI(org, bucket),
+		writeAPI:         writeAPI,
 		mainfluxApiToken: mainfluxApiToken,
 		thingsService:    NewThingsService(thingsServiceConfig),
+		logger:           logger,
 	}
 }
 
 func (repo *influxRepo) Consume(message interface{}) error {
+
 	switch m := message.(type) {
 	// TODO: Bring back json support
-	// case json.Messages:
-	// 	pts, err := repo.jsonPoints(pts, m)
+	case json.Messages:
+		if strings.ToUpper(m.Format) == "JSON" {
+			return repo.jsonPoints(m)
+		} else {
+			// TODO: shall we actually return an error here.
+			// maybe this kinds payload is for other consumers?
+			repo.logger.Info(fmt.Sprintf("Ignore the message with format %s", m.Format))
+		}
 	default:
-		repo.senmlPoints(m)
+		return repo.senmlPoints(m)
 	}
 
 	return nil
@@ -68,7 +95,9 @@ func (repo *influxRepo) senmlPoints(messages interface{}) error {
 			deviceName = msg.Name
 			measurement = msg.Name
 		}
-		meta, err := repo.thingsService.GetThingMetaById(msg.Publisher)
+		// if there eorr of getting meta, ignore it
+		// still save it to influx db
+		meta, _ := repo.thingsService.GetThingMetaById(msg.Publisher)
 
 		tgs := senmlTags(msg, deviceName, meta)
 
@@ -84,29 +113,56 @@ func (repo *influxRepo) senmlPoints(messages interface{}) error {
 }
 
 // TODO: Bring back json support
-// func (repo *influxRepo) jsonPoints(pts influxdata.BatchPoints, msgs json.Messages) (influxdata.BatchPoints, error) {
-// 	for i, m := range msgs.Data {
-// 		t := time.Unix(0, m.Created+int64(i))
+func (repo *influxRepo) jsonPoints(msgs json.Messages) error {
+	for _, m := range msgs.Data {
+		flat, err := json.Flatten(m.Payload)
+		if err != nil {
+			return errors.Wrap(json.ErrTransform, err)
+		}
 
-// 		flat, err := json.Flatten(m.Payload)
-// 		if err != nil {
-// 			return nil, errors.Wrap(json.ErrTransform, err)
-// 		}
-// 		m.Payload = flat
+		measurement := ""
+		deviceName := ""
+		// Copy first-level fields so that the original Payload is unchanged.
+		fields := make(map[string]interface{})
+		for k, v := range flat {
+			if k == "deviceName" {
+				deviceName = v.(string)
+			} else if k == "measurement" {
+				measurement = v.(string)
+			} else {
+				fields[k] = v
+			}
 
-// 		// Copy first-level fields so that the original Payload is unchanged.
-// 		fields := make(map[string]interface{})
-// 		for k, v := range m.Payload {
-// 			fields[k] = v
-// 		}
-// 		// At least one known field need to exist so that COUNT can be performed.
-// 		fields["protocol"] = m.Protocol
-// 		pt, err := influxdata.NewPoint(msgs.Format, jsonTags(m), fields, t)
-// 		if err != nil {
-// 			return nil, errors.Wrap(errSaveMessage, err)
-// 		}
-// 		pts.AddPoint(pt)
-// 	}
+		}
 
-// return pts, nil
-// }
+		if measurement == "" {
+			// if no measurement, ignore the message.
+			// TODO add a log message here.
+			repo.logger.Info("Ignore the data without measurement key")
+			continue
+		}
+
+		t := time.Unix(0, m.Created)
+
+		// TODO: do we need add thing id to the tag if the publisher is not
+		// the thing id of the device?
+		// if there eorr of getting meta, ignore it
+		// still save it to influx db
+		var meta things.Metadata
+
+		thingID := flat["thingId"]
+		if thingID != nil {
+			meta, _ = repo.thingsService.GetThingMetaById(thingID.(string))
+		} else {
+			meta, _ = repo.thingsService.GetThingMetaById(m.Publisher)
+		}
+
+		tgs := jsonTags(m, deviceName, meta)
+		pt := influxdata.NewPoint(measurement, tgs, fields, t)
+		repo.writeAPI.WritePoint(pt)
+	}
+
+	repo.writeAPI.Flush()
+
+	return nil
+}

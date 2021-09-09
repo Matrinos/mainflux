@@ -52,7 +52,11 @@ func transformer(msg messaging.Message) (interface{}, error) {
 	if len(subs) == 0 {
 		return nil, errors.Wrap(ErrTransform, errUnknownFormat)
 	}
-	format := subs[len(subs)-1]
+
+	// path message/json converts to json.message in nats.
+	// looks a bug in mainflux??
+	// TODO: need more tests
+	format := subs[0]
 	var payload interface{}
 	if err := json.Unmarshal(msg.Payload, &payload); err != nil {
 		return nil, errors.Wrap(ErrTransform, err)

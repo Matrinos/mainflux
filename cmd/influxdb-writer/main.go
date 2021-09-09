@@ -29,7 +29,7 @@ import (
 const (
 	svcName = "influxdb-writer"
 
-	defNatsURL          = "nats://190.190.190.81:4222"
+	defNatsURL          = "nats://localhost:4222"
 	defLogLevel         = "error"
 	defPort             = "8180"
 	defDB               = "mainflux"
@@ -41,7 +41,7 @@ const (
 	defOrg              = "mainflux"
 	defBucket           = "mainflux"
 	defMainfluxApiToken = ""
-	defMainfluxUrl      = "http://190.190.190.81"
+	defMainfluxUrl      = "http://localhost"
 
 	envNatsURL          = "MF_NATS_URL"
 	envLogLevel         = "MF_INFLUX_WRITER_LOG_LEVEL"
@@ -96,7 +96,7 @@ func main() {
 	}
 	defer client.Close()
 
-	repo := influxdb.New(client, cfg.org, cfg.bucket, cfg.mainfluxApiToken, cfg.mainfluxUrl)
+	repo := influxdb.New(client, cfg.org, cfg.bucket, cfg.mainfluxApiToken, cfg.mainfluxUrl, logger)
 
 	counter, latency := makeMetrics()
 	repo = api.LoggingMiddleware(repo, logger)
