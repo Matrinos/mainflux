@@ -152,7 +152,7 @@ func TestSaveJSON(t *testing.T) {
 		Channel:   chid.String(),
 		Publisher: pubid.String(),
 		Created:   time.Now().UnixNano(),
-		Subtopic:  "subtopic/format/some_json",
+		Subtopic:  "subtopic/format/json",
 		Protocol:  "mqtt",
 		Payload: map[string]interface{}{
 			"field_1": 123,
@@ -195,13 +195,13 @@ func TestSaveJSON(t *testing.T) {
 
 	now := time.Now().UnixNano()
 	msgs := json.Messages{
-		Format: "some_json",
+		Format: "json",
 	}
 	invalidKeySepMsgs := json.Messages{
-		Format: "some_json",
+		Format: "json",
 	}
 	invalidKeyNameMsgs := json.Messages{
-		Format: "some_json",
+		Format: "json",
 	}
 
 	for i := 0; i < streamsSize; i++ {
