@@ -7,6 +7,7 @@ require (
 	github.com/docker/docker v20.10.8+incompatible
 	github.com/eclipse/paho.mqtt.golang v1.3.5
 	github.com/fatih/color v1.12.0
+	github.com/fiorix/go-smpp v0.0.0-20210403173735-2894b96e70ba
 	github.com/go-kit/kit v0.11.0
 	github.com/go-redis/redis/v8 v8.11.3
 	github.com/go-zoo/bone v1.3.0
@@ -29,6 +30,7 @@ require (
 	github.com/oklog/ulid/v2 v2.0.2
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/ory/dockertest/v3 v3.7.0
+	github.com/ory/keto/proto/ory/keto/acl/v1alpha1 v0.0.0-20210616104402-80e043246cf9
 	github.com/pelletier/go-toml v1.9.3
 	github.com/plgd-dev/go-coap/v2 v2.4.0
 	github.com/prometheus/client_golang v1.11.0
@@ -61,7 +63,7 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dsnet/golib/memfile v0.0.0-20200723050859-c110804dfa93 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
-	github.com/fxamacker/cbor/v2 v2.2.0 // indirect
+	github.com/fxamacker/cbor/v2 v2.3.0 // indirect
 	github.com/go-logfmt/logfmt v0.5.0 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/golang/snappy v0.0.3 // indirect
